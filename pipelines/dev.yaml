@@ -149,7 +149,7 @@ stages:
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
-            script: 'trufflehog github --repo=https://CloudMatrixSolutions@dev.azure.com/CloudMatrixSolutions/mohit-labs/_git/todo-infra'
+            script: trufflehog git --no-update '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
             workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
       - job: checkov
