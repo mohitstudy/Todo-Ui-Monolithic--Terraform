@@ -7,8 +7,11 @@ parameters:
       - dev
       - prod
 
-trigger: none
-pool: todo-pool
+trigger:
+  - main
+  - feature/*
+
+pool: default
 stages:
   - stage: terraforminit
     displayName: TERRAFORM INIT
@@ -33,10 +36,10 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              backendServiceArm: 'svc-todo-man'
-              backendAzureRmStorageAccountName: 'azurepipeline123'
+              backendServiceArm: 'todo-infra'
+              backendAzureRmStorageAccountName: 'remotebackendstgm'
               workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              backendAzureRmContainerName: 'azure'
+              backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
           - task: TerraformTask@5
             inputs:
@@ -44,7 +47,7 @@ stages:
               command: 'plan'
               backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
               workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              environmentServiceNameAzureRM: 'svc-todo-man'
+              environmentServiceNameAzureRM: 'todo-infra'
   - stage: terraformapply
     displayName: TERRAFORM APPLY
     jobs:
@@ -54,14 +57,14 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              backendServiceArm: 'svc-todo-man'
-              backendAzureRmStorageAccountName: 'azurepipeline123'
+              backendServiceArm: 'todo-infra'
+              backendAzureRmStorageAccountName: 'remotebackendstgm'
               workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              backendAzureRmContainerName: 'azure'
+              backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
           - task: TerraformTask@5
             inputs:
               provider: 'azurerm'
               command: 'apply'
               workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              environmentServiceNameAzureRM: 'svc-todo-man'
+              environmentServiceNameAzureRM: 'todo-infra'
