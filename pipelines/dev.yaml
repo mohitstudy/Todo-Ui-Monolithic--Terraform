@@ -1,79 +1,154 @@
+# ================================================
+# 🌍 Terraform Azure DevOps Pipeline
+# Author: Mohit | Infra: Azure | IaC: Terraform
+# ================================================
+
 parameters:
-  - name: enviroment
-    displayName: PARAMETERS
+  - name: environment
+    displayName: "Environment"
     type: string
     default: dev
-    values:           
+    values:
       - dev
       - prod
 
+# 🔔 Trigger branches
 trigger:
-  - main
-  - feature/*
+  branches:
+    include:
+      - main
+      - feature/*
 
-pool: default
+# 👷 Agent Pool
+pool:
+  name: default
+
+# ============================================================
+# STAGE 1️⃣ : TERRAFORM INIT
+# ============================================================
 stages:
-  - stage: terraforminit
-    displayName: TERRAFORM INIT
+  - stage: terraform_init
+    displayName: "Terraform Init"
     jobs:
-      - job: terraforminit
+      - job: terraform_init
+        displayName: "Initialize Terraform"
         steps:
+          - checkout: self
+
           - task: TerraformInstaller@1
+            displayName: "Install Terraform"
             inputs:
               terraformVersion: 'latest'
+
           - task: TerraformTask@5
+            displayName: "Terraform Init"
             inputs:
               provider: 'azurerm'
-              command: 'init'                                                 
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              backendServiceArm: 'todo-infra'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              backendServiceArm: 'todo-infra'  # Azure DevOps service connection
+              backendAzureRmResourceGroupName: 'tfstate-rg'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
-              backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
-  - stage: terraformplan
-    displayName: TERRAFORM PLAN
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+
+# ============================================================
+# STAGE 2️⃣ : TERRAFORM VALIDATE
+# ============================================================
+  - stage: terraform_validate
+    displayName: "Terraform Validate"
+    dependsOn: terraform_init
     jobs:
-      - job: 
+      - job: terraform_validate
+        displayName: "Validate Terraform Code"
         steps:
+          - checkout: self
+
           - task: TerraformInstaller@1
+            displayName: "Install Terraform"
             inputs:
               terraformVersion: 'latest'
+
           - task: TerraformTask@5
+            displayName: "Terraform Validate"
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+
+# ============================================================
+# STAGE 3️⃣ : TERRAFORM PLAN
+# ============================================================
+  - stage: terraform_plan
+    displayName: "Terraform Plan"
+    dependsOn: terraform_validate
+    jobs:
+      - job: terraform_plan
+        displayName: "Plan Infrastructure"
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: "Install Terraform"
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
             inputs:
               provider: 'azurerm'
               command: 'init'
               backendServiceArm: 'todo-infra'
+              backendAzureRmResourceGroupName: 'tfstate-rg'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
               backendAzureRmContainerName: 'tfstate'
-              backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+
           - task: TerraformTask@5
+            displayName: "Terraform Plan"
             inputs:
               provider: 'azurerm'
               command: 'plan'
-              backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
               environmentServiceNameAzureRM: 'todo-infra'
-  - stage: terraformapply
-    displayName: TERRAFORM APPLY
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              publishPlanResults: 'true'
+
+# ============================================================
+# STAGE 4️⃣ : TERRAFORM APPLY
+# ============================================================
+  - stage: terraform_apply
+    displayName: "Terraform Apply"
+    dependsOn: terraform_plan
+    condition: succeeded()
     jobs:
-      - job: terraformapply
+      - job: terraform_apply
+        displayName: "Apply Infrastructure Changes"
         steps:
+          - checkout: self
+
           - task: TerraformInstaller@1
+            displayName: "Install Terraform"
             inputs:
               terraformVersion: 'latest'
+
           - task: TerraformTask@5
+            displayName: "Terraform Init"
             inputs:
               provider: 'azurerm'
               command: 'init'
               backendServiceArm: 'todo-infra'
+              backendAzureRmResourceGroupName: 'tfstate-rg'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
               backendAzureRmContainerName: 'tfstate'
-              backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+
           - task: TerraformTask@5
+            displayName: "Terraform Apply"
             inputs:
               provider: 'azurerm'
               command: 'apply'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
               environmentServiceNameAzureRM: 'todo-infra'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              args: '-auto-approve'
