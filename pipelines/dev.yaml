@@ -187,7 +187,7 @@ stages:
 # ============================================================
   - stage: terraform_apply
     displayName: "Terraform Apply"
-    dependsOn: manual_approval
+    dependsOn: code_scanning
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - job: terraform_apply
