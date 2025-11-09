@@ -9,6 +9,11 @@ resource "azurerm_key_vault_secret" "passwords" {
   name         = each.key          
   value        = random_password.vm_pwd[each.key].result
   key_vault_id = var.kv_id
+
+  lifecycle {
+    ignore_changes = [value]              # Don't recreate if value changes
+    create_before_destroy = true          # Create new version first
+  }
 }
 
 resource "azurerm_key_vault_secret" "usernames" {
@@ -16,5 +21,10 @@ resource "azurerm_key_vault_secret" "usernames" {
   name         = each.key                          
   value        = each.value
   key_vault_id = var.kv_id
+
+  lifecycle {
+    ignore_changes = [value]              # Don't recreate if value changes
+    create_before_destroy = true          # Create new version first
+  }
 }
 
