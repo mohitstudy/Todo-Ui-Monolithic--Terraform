@@ -38,7 +38,7 @@ module "key_secret" {
 
 
 module "sql_server" {
-    depends_on = [module.kv]
+    depends_on = [module.kv , module.key_secret]
     source = "../../module/azurerm_sql_server"
     sql_servers = var.sql_servers
 }
