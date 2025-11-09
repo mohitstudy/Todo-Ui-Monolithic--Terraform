@@ -18,8 +18,8 @@ vnets = {
         address_prefixes = ["10.0.1.0/24"]
       }
       subnet2 = {
-        name             = "backent-subnet"
-        address_prefixes = ["10.0.0.0/24"]
+        name             = "backend-subnet"
+        address_prefixes = ["10.0.2.0/24"]
       }
     }
   }
@@ -27,7 +27,13 @@ vnets = {
 
 pips = {
   pip1 = {
-    name              = "pip-mk"
+    name              = "frontend-pip-mk"
+    rg_name          = "rg-mk"
+    location         = "central india"
+    allocation_method = "Static"
+  }
+    pip2 = {
+    name              = "backend-pip-mk"
     rg_name          = "rg-mk"
     location         = "central india"
     allocation_method = "Static"

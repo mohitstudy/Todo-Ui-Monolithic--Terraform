@@ -45,9 +45,9 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
               backendServiceArm: 'todo-infra'  # Azure DevOps service connection
-              backendAzureRmResourceGroupName: 'tfstate-rg'
+              backendAzureRmResourceGroupName: 'NetworkWatcherRG'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
@@ -74,7 +74,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'validate'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
 # ============================================================
 # STAGE 3️⃣ : TERRAFORM PLAN
@@ -99,11 +99,11 @@ stages:
               provider: 'azurerm'
               command: 'init'
               backendServiceArm: 'todo-infra'
-              backendAzureRmResourceGroupName: 'tfstate-rg'
+              backendAzureRmResourceGroupName: 'NetworkWatcherRG'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
           - task: TerraformTask@5
             displayName: "Terraform Plan"
@@ -111,7 +111,7 @@ stages:
               provider: 'azurerm'
               command: 'plan'
               environmentServiceNameAzureRM: 'todo-infra'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
               publishPlanResults: 'true'
 
 # ============================================================
@@ -138,11 +138,11 @@ stages:
               provider: 'azurerm'
               command: 'init'
               backendServiceArm: 'todo-infra'
-              backendAzureRmResourceGroupName: 'tfstate-rg'
+              backendAzureRmResourceGroupName: 'NetworkWatcherRG'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
           - task: TerraformTask@5
             displayName: "Terraform Apply"
@@ -150,5 +150,5 @@ stages:
               provider: 'azurerm'
               command: 'apply'
               environmentServiceNameAzureRM: 'todo-infra'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
               args: '-auto-approve'
