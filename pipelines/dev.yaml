@@ -18,20 +18,26 @@ stages:
     jobs:
       - job: terraforminit
         steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
           - task: TerraformTask@5
             inputs:
               provider: 'azurerm'
               command: 'init'                                                 
               workingDirectory: '$(System.DefaultWorkingDirectory)/env/${{ parameters.enviroment }}'
-              backendServiceArm: 'svc-todo-man'
-              backendAzureRmStorageAccountName: 'azurepipeline123'
-              backendAzureRmContainerName: 'azure'
+              backendServiceArm: 'todo-infra'
+              backendAzureRmStorageAccountName: 'remotebackendstgm'
+              backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.enviroment }}.terraform.tfstate'
   - stage: terraformplan
     displayName: TERRAFORM PLAN
     jobs:
       - job: 
         steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
           - task: TerraformTask@5
             inputs:
               provider: 'azurerm'
@@ -53,6 +59,9 @@ stages:
     jobs:
       - job: terraformapply
         steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
           - task: TerraformTask@5
             inputs:
               provider: 'azurerm'
