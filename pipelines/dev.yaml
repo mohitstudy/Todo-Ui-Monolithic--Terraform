@@ -45,12 +45,12 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
-              backendServiceArm: 'todo-infra'  # Azure DevOps service connection
+              backendServiceArm: 'todo-infra'
               backendAzureRmResourceGroupName: 'NetworkWatcherRG'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
 # ============================================================
 # STAGE 2️⃣ : TERRAFORM VALIDATE
@@ -68,17 +68,18 @@ stages:
             displayName: "Install Terraform"
             inputs:
               terraformVersion: 'latest'
+
           - task: TerraformTask@5
             displayName: "Terraform Init"
             inputs:
               provider: 'azurerm'
               command: 'init'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
-              backendServiceArm: 'todo-infra'  # Azure DevOps service connection
+              backendServiceArm: 'todo-infra'
               backendAzureRmResourceGroupName: 'NetworkWatcherRG'
               backendAzureRmStorageAccountName: 'remotebackendstgm'
               backendAzureRmContainerName: 'tfstate'
               backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
           - task: TerraformTask@5
             displayName: "Terraform Validate"
@@ -88,7 +89,7 @@ stages:
               workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
 # ============================================================
-# STAGE 3️⃣ : TERRAFORM PLAN
+# STAGE 3️⃣ : TERRAFORM PLAN (Feature + Main)
 # ============================================================
   - stage: terraform_plan
     displayName: "Terraform Plan"
@@ -126,12 +127,30 @@ stages:
               publishPlanResults: 'true'
 
 # ============================================================
-# STAGE 4️⃣ : TERRAFORM APPLY
+# 🚦 MANUAL APPROVAL (Feature Branch Only)
+# ============================================================
+  - stage: manual_approval
+    displayName: "Manual Approval Before Apply"
+    dependsOn: terraform_plan
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'))
+    jobs:
+      - job: wait_for_approval
+        displayName: "Wait for Manual Validation"
+        pool: server
+        steps:
+          - task: ManualValidation@0
+            timeoutInMinutes: 60
+            inputs:
+              notifyUsers: 'mohitstudy@gmail.com'
+              instructions: 'Please review Terraform Plan output and approve if it looks good.'
+
+# ============================================================
+# STAGE 4️⃣ : TERRAFORM APPLY (Main Branch Only)
 # ============================================================
   - stage: terraform_apply
     displayName: "Terraform Apply"
     dependsOn: terraform_plan
-    condition: succeeded()
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - job: terraform_apply
         displayName: "Apply Infrastructure Changes"
