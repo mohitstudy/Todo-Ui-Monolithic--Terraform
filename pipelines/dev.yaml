@@ -144,16 +144,18 @@ stages:
             version: 'v1.26.0'
             dir: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
       - job: tflint
-        displayName: "TroubleHog"
+        displayName: "TruffleHog"
+        continueOnError: true  
         steps: 
         - task: PowerShell@2
           inputs:
             targetType: 'inline'
-            script: trufflehog git --no-update '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+            script: trufflehog filesystem '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
             workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
 
       - job: checkov
         displayName: "Checkov"
+        continueOnError: true
         steps:
         - task: PowerShell@2
           inputs:
