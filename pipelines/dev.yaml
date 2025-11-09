@@ -23,6 +23,7 @@ trigger:
 pool:
   name: default
 
+
 # ============================================================
 # STAGE 1️⃣ : TERRAFORM INIT
 # ============================================================
@@ -126,6 +127,41 @@ stages:
               workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
               publishPlanResults: 'true'
 
+
+# ============================================================
+# STAGE 3️⃣ : CODE SCANNING
+# ============================================================
+
+  - stage: code_scanning
+    displayName: "Code Scanning"
+    dependsOn: terraform_plan
+    jobs:
+      - job: tfsec
+        displayName: "TFSEC"
+        steps: 
+        - task: tfsec@1
+          inputs:
+            version: 'v1.26.0'
+            dir: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+      - job: tflint
+        displayName: "TroubleHog"
+        steps: 
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'trufflehog github --repo=https://CloudMatrixSolutions@dev.azure.com/CloudMatrixSolutions/mohit-labs/_git/todo-infra'
+            workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+      - job: checkov
+        displayName: "Checkov"
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: 'checkov -d $(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+            workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+  
 # ============================================================
 # 🚦 MANUAL APPROVAL (Feature Branch Only)
 # ============================================================
