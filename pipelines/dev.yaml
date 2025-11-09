@@ -12,7 +12,7 @@ parameters:
       - dev
       - prod
 
-# 🔔 Trigger branches
+# 🔔 Trigger branchess
 trigger:
   branches:
     include:
