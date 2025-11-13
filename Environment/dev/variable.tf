@@ -40,6 +40,7 @@ variable "vms" {
     kv_name    = string
     vm_size     = string
     nsg_name   = string
+    script_name = string
     user_secret_name   = string
     pwd_secret_name   = string
     ip_configurations = map(object({
