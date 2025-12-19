@@ -1,0 +1,213 @@
+# ================================================
+# 🌍 Terraform Azure DevOps Pipeline (Optimized)
+# Author: Mohit Kumar
+# ================================================
+
+parameters:
+  - name: environment
+    displayName: "Environment"
+    type: string
+    default: dev
+    values:
+      - dev
+      - prod
+
+# 🔔 Trigger branches
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+
+pool:
+  name: default
+
+
+stages:
+
+# ============================================================
+# 1️⃣ TERRAFORM INIT  (Only on feature branches)
+# ============================================================
+  - stage: terraform_init
+    displayName: "Terraform Init"
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    jobs:
+      - job: terraform_init
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'todo-infra'
+              backendAzureRmResourceGroupName: 'NetworkWatcherRG'
+              backendAzureRmStorageAccountName: 'remotebackendstgm'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+
+# ============================================================
+# 2️⃣ TERRAFORM VALIDATE (feature only)
+# ============================================================
+  - stage: terraform_validate
+    displayName: "Terraform Validate"
+    dependsOn: terraform_init
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    jobs:
+      - job: terraform_validate
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'todo-infra'
+              backendAzureRmResourceGroupName: 'NetworkWatcherRG'
+              backendAzureRmStorageAccountName: 'remotebackendstgm'
+              backendAzureRmContainerName: 'tfstate'
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Validate"
+            inputs:
+              provider: 'azurerm'
+              command: validate
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+
+# ============================================================
+# 3️⃣ TERRAFORM PLAN (feature only)
+# ============================================================
+  - stage: terraform_plan
+    displayName: "Terraform Plan"
+    dependsOn: terraform_validate
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    jobs:
+      - job: terraform_plan
+        steps:
+          - checkout: self
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: azurerm
+              command: init
+              backendServiceArm: todo-infra
+              backendAzureRmResourceGroupName: NetworkWatcherRG
+              backendAzureRmStorageAccountName: remotebackendstgm
+              backendAzureRmContainerName: tfstate
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Plan"
+            inputs:
+              provider: azurerm
+              command: plan
+              environmentServiceNameAzureRM: todo-infra
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+              publishPlanResults: true
+
+
+# ============================================================
+# 4️⃣ CODE SCANNING (feature only)
+# ============================================================
+  - stage: code_scanning
+    displayName: "Code Scanning"
+    dependsOn: terraform_plan
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    jobs:
+      - job: tfsec
+        steps:
+          - task: tfsec@1
+            inputs:
+              version: 'v1.26.0'
+              dir: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+      - job: TruffleHog
+        continueOnError: true
+        steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: trufflehog filesystem '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+      - job: tflint
+        continueOnError: true
+        steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: tflint
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+
+# ============================================================
+# 🚦 MANUAL APPROVAL (feature only)
+# ============================================================
+  - stage: manual_approval
+    displayName: "Manual Approval"
+    dependsOn: code_scanning
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    jobs:
+      - job: wait_for_approval
+        pool: server
+        steps:
+          - task: ManualValidation@0
+            inputs:
+              notifyUsers: 'mohitstudy@gmail.com'
+              instructions: "Please approve the Terraform plan."
+
+
+# ============================================================
+# 5️⃣ TERRAFORM APPLY (ONLY MAIN BRANCH, NO DEPENDENCY)
+# ============================================================
+  - stage: terraform_apply
+    displayName: "Terraform Apply"
+    dependsOn: []     # ⛔ does NOT depend on previous stages
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+    jobs:
+      - job: terraform_apply
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: azurerm
+              command: init
+              backendServiceArm: todo-infra
+              backendAzureRmResourceGroupName: NetworkWatcherRG
+              backendAzureRmStorageAccountName: remotebackendstgm
+              backendAzureRmContainerName: tfstate
+              backendAzureRmKey: '${{ parameters.environment }}.terraform.tfstate'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Apply"
+            inputs:
+              provider: azurerm
+              command: apply
+              environmentServiceNameAzureRM: todo-infra
+              workingDirectory: '$(System.DefaultWorkingDirectory)/Environment/${{ parameters.environment }}'
+              args: -auto-approve
