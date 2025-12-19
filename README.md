@@ -197,9 +197,8 @@ We welcome contributions! Please follow these steps:
 - Add documentation for new modules
 - Test changes in development environment first
 
-## 📄 License
-
-
 
 **Built with ❤️ using Terraform and Azure**
 
+
+****Auther ==> Mohit Kumar ****
